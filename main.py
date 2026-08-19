@@ -13,6 +13,9 @@ tasks = [
 class TaskCreate(BaseModel):
     title: str | None = None
 
+class TaskUpdate(BaseModel):
+    title: str | None = None
+    done: bool | None = None
 
 @app.get("/")
 def root():
@@ -49,3 +52,38 @@ def create_task(task_in: TaskCreate, response: Response):
 
     response.status_code = status.HTTP_201_CREATED
     return new_task
+
+@app.put("/tasks/{task_id}")
+def update_task(task_id: int, task_in: TaskUpdate, response: Response):
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    
+    if task is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"error": f"Task {task_id} not found"}
+    
+    if task_in.title is None and task_in.done is None:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return {"error": "Request body must contain 'title' and/or 'done'"}
+    
+    if task_in.title is not None:
+        if not task_in.title.strip():
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return {"error": "Title cannot be empty"}
+        task["title"] = task_in.title.strip()
+        
+    if task_in.done is not None:
+        task["done"] = task_in.done
+        
+    return task
+
+@app.delete("/tasks/{task_id}")
+def delete_task(task_id: int, response: Response):
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    
+    if task is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"error": f"Task {task_id} not found"}
+    
+    tasks.remove(task)
+    
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
