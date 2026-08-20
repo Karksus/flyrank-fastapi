@@ -79,3 +79,37 @@ curl -i -X DELETE "http://127.0.0.1:8000/tasks/2"
 <img width="315" height="202" alt="image" src="https://github.com/user-attachments/assets/2c63e1dd-ef5f-4b74-95d0-21cb262182fd" />
 
 <img width="316" height="146" alt="image" src="https://github.com/user-attachments/assets/5b12f716-d0ca-4c72-a545-e7401381bf95" />
+
+---
+
+## AI vs Me
+
+I built `main.py` step by step, endpoint by endpoint. Then I asked an AI to generate its own version from a single detailed prompt describing the same API.
+
+### What did the AI do better?
+
+The AI version is more polished in several concrete ways:
+
+- I built every endpoint except the one that lists all tasks — the most obvious starting point for any CRUD API. The AI included it without being asked.
+- AI declared `response_model=Task` or `response_model=List[Task]` on each route, which gives you automatic Pydantic validation of the response and proper OpenAPI schema output. I return raw dicts and FastAPI just trusts them.
+- The AI raises `HTTPException` with `detail`, which FastAPI serializes into a standard `{"detail": "..."}` error body. I manually set `response.status_code` and return an `{"error": ...}` .
+- The AI version groups endpoints into tags (`Tasks`, `Root`, `Health Check`) and adds summary lines, so the `/docs` page is actually organized. Mine is a flat wall of endpoints with no grouping.
+- Pydantic used to enforce input lenght validation, while I do manual `.strip()` checks.
+
+I understand the AI version well enough to explain every line, but the gap is real: it took me several focused sessions to reach the state I have, and the AI produced something objectively more complete in one shot.
+
+### What did the AI get wrong or quietly ignore?
+
+- **No `400` on empty request body for `PUT`.** My version explicitly checks whether the client sent an empty body (`title` and `done` are both `None`) and returns a `400 Bad Request`. The AI version silently accepts it and returns the task unchanged.
+- `Optional[str]` with `min_length` doesn't reject an empty string in the same way. If a client sends `"   "`, my version catches it; the AI version would pass it through (min_length counts whitespace characters).
+
+### What did my prompt forget to specify — and what did the AI silently decide for you?
+
+I never told the AI:
+
+- **Which endpoints to include.** I described the CRUD operations but didn't explicitly say "include a `GET /tasks` to list all tasks." The AI decided to add it.
+- I didn't say "use `HTTPException`" or "use the `Response` object.".
+- I never specified min/max title length. The AI invented `min_length=3, max_length=100`.
+- I didn't specify `{"error": "..."}` vs `{"detail": "..."}`. The AI went with FastAPI's convention.
+
+Conclusion: the AI is a better FastAPI practitioner than I am right now, but it also makes a dozen silent decisions that a human reviewer needs to catch.
