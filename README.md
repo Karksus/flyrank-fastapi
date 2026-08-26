@@ -90,6 +90,12 @@ curl -i -X DELETE "http://127.0.0.1:8000/tasks/2"
 ---
 ## DB-Browser example
 
+### Database
+<img width="377" height="209" alt="image" src="https://github.com/user-attachments/assets/f2827846-e8a3-4442-964e-12b2a6c41cdd" />
+
+### Query
+<img width="367" height="376" alt="image" src="https://github.com/user-attachments/assets/d507c973-d993-4583-8968-550ab71cbb68" />
+
 ## AI vs Me
 
 I built `main.py` step by step, endpoint by endpoint. Then I asked an AI to generate its own version from a single detailed prompt describing the same API.
