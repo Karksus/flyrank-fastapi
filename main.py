@@ -1,13 +1,21 @@
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI, Response, status, Depends
 from pydantic import BaseModel
+from sqlmodel import Field, Session, SQLModel, create_engine, select
+from contextlib import asynccontextmanager
+from typing import Optional
 
-app = FastAPI()
+class Tasks(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    title: str
+    done: bool
 
-tasks = [
-    {"id": 1, "title": "Learn about FastAPI path parameters", "done": True},
-    {"id": 2, "title": "Learn about FastAPI query parameters", "done": False},
-    {"id": 3, "title": "Learn about FastAPI request body", "done": False},
-]
+
+sqlite_url = "sqlite:///tasks.db"
+engine = create_engine(sqlite_url, connect_args={"check_same_thread": False})
+
+def get_session():
+    with Session(engine) as session:
+        yield session
 
 
 class TaskCreate(BaseModel):
@@ -16,6 +24,63 @@ class TaskCreate(BaseModel):
 class TaskUpdate(BaseModel):
     title: str | None = None
     done: bool | None = None
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    SQLModel.metadata.create_all(engine)
+    
+    with Session(engine) as session:
+        statement = select(Tasks)
+        existing_task = session.exec(statement).first()
+        
+        if not existing_task:
+            initial_tasks = [
+                Tasks(title="Learn FastAPI Basics and Routing", done=True),
+                Tasks(title="Implement Pydantic Models & Validation", done=False),
+                Tasks(title="Write Complete CRUD Endpoints", done=False),
+            ]
+            session.add_all(initial_tasks)
+            session.commit()
+            
+    yield
+    pass
+
+app = FastAPI(
+    title="FastAPI Task Manager Toy API",
+    description="A fully-featured toy CRUD application managing FastAPI learning tasks with input validation and error handling.",
+    version="0.2.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan
+)
+
+class SqlOperator:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def get_by_id(self, task_id: int) -> Optional[Tasks]:
+        return self.session.get(Tasks, task_id)
+
+    def create(self, title: str) -> Tasks:
+        db_task = Tasks(title=title, done=False)
+        self.session.add(db_task)
+        self.session.commit()
+        self.session.refresh(db_task)
+        return db_task
+
+    def update(self, task: Tasks, title: Optional[str] = None, done: Optional[bool] = None) -> Tasks:
+        if title is not None:
+            task.title = title.strip()
+        if done is not None:
+            task.done = done
+        self.session.add(task)
+        self.session.commit()
+        self.session.refresh(task)
+        return task
+
+    def delete(self, task: Tasks) -> None:
+        self.session.delete(task)
+        self.session.commit()
 
 @app.get("/")
 def root():
@@ -28,8 +93,9 @@ def health():
 
 
 @app.get("/tasks/{task_id}")
-def get_task_id(task_id: int, response: Response):
-    task = next((t for t in tasks if t["id"] == task_id), None)
+def get_task_id(task_id: int, response: Response, session: Session = Depends(get_session)):
+    db = SqlOperator(session)
+    task = db.get_by_id(task_id)
 
     if task is None:
         response.status_code = status.HTTP_404_NOT_FOUND
@@ -39,23 +105,21 @@ def get_task_id(task_id: int, response: Response):
 
 
 @app.post("/tasks")
-def create_task(task_in: TaskCreate, response: Response):
+def create_task(task_in: TaskCreate, response: Response, session: Session = Depends(get_session)):
     if not task_in.title or not task_in.title.strip():
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"error": "Title is required and cannot be empty"}
 
-    next_id = max((t["id"] for t in tasks), default=0) + 1
-
-    new_task = {"id": next_id, "title": task_in.title.strip(), "done": False}
-
-    tasks.append(new_task)
+    db = SqlOperator(session)
+    new_task = db.create(task_in.title.strip())
 
     response.status_code = status.HTTP_201_CREATED
     return new_task
 
 @app.put("/tasks/{task_id}")
-def update_task(task_id: int, task_in: TaskUpdate, response: Response):
-    task = next((t for t in tasks if t["id"] == task_id), None)
+def update_task(task_id: int, task_in: TaskUpdate, response: Response, session: Session = Depends(get_session)):
+    db = SqlOperator(session)
+    task = db.get_by_id(task_id)
     
     if task is None:
         response.status_code = status.HTTP_404_NOT_FOUND
@@ -65,25 +129,21 @@ def update_task(task_id: int, task_in: TaskUpdate, response: Response):
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"error": "Request body must contain 'title' and/or 'done'"}
     
-    if task_in.title is not None:
-        if not task_in.title.strip():
-            response.status_code = status.HTTP_400_BAD_REQUEST
-            return {"error": "Title cannot be empty"}
-        task["title"] = task_in.title.strip()
+    if task_in.title is not None and not task_in.title.strip():
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return {"error": "Title cannot be empty"}
         
-    if task_in.done is not None:
-        task["done"] = task_in.done
-        
-    return task
+    updated_task = db.update(task, title=task_in.title, done=task_in.done)
+    return updated_task
 
 @app.delete("/tasks/{task_id}")
-def delete_task(task_id: int, response: Response):
-    task = next((t for t in tasks if t["id"] == task_id), None)
+def delete_task(task_id: int, response: Response, session: Session = Depends(get_session)):
+    db = SqlOperator(session)
+    task = db.get_by_id(task_id)
     
     if task is None:
         response.status_code = status.HTTP_404_NOT_FOUND
         return {"error": f"Task {task_id} not found"}
     
-    tasks.remove(task)
-    
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    db.delete(task)
+    return Response(status_status_code=status.HTTP_204_NO_CONTENT)
