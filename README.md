@@ -1,6 +1,13 @@
-## FlyRank - AI Backend Track - Build you first CRUD API
+# FlyRank - AI Backend Track - Build you first CRUD API
 
-The current repository holds a toy example o CRUD implementation using FASTAPI.
+##  Task API with FastAPI & SQLModel
+
+A simple, lightweight CRUD API built with FastAPI and SQLModel, backed by a persistent SQLite database.
+
+## Database Design & Persistence
+
+* **Why SQLite was chosen:** SQLite was chosen because it is lightweight, requires **zero setup** or external server configuration, stores everything in a **single file**, and **survives restarts** to preserve your data between sessions.
+* **Where the database file lives:** The database file is named **`tasks.db`** and is created automatically in your project root upon startup. It is typically included in `.gitignore` so that each new clone of the repository starts with a fresh database.
 
 ### How to run it
 
@@ -81,6 +88,7 @@ curl -i -X DELETE "http://127.0.0.1:8000/tasks/2"
 <img width="316" height="146" alt="image" src="https://github.com/user-attachments/assets/5b12f716-d0ca-4c72-a545-e7401381bf95" />
 
 ---
+## DB-Browser example
 
 ## AI vs Me
 
