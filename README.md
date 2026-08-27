@@ -104,26 +104,24 @@ I built `main.py` step by step, endpoint by endpoint. Then I asked an AI to gene
 
 The AI version is more polished in several concrete ways:
 
-- I built every endpoint except the one that lists all tasks — the most obvious starting point for any CRUD API. The AI included it without being asked.
-- AI declared `response_model=Task` or `response_model=List[Task]` on each route, which gives you automatic Pydantic validation of the response and proper OpenAPI schema output. I return raw dicts and FastAPI just trusts them.
-- The AI raises `HTTPException` with `detail`, which FastAPI serializes into a standard `{"detail": "..."}` error body. I manually set `response.status_code` and return an `{"error": ...}` .
-- The AI version groups endpoints into tags (`Tasks`, `Root`, `Health Check`) and adds summary lines, so the `/docs` page is actually organized. Mine is a flat wall of endpoints with no grouping.
-- Pydantic used to enforce input lenght validation, while I do manual `.strip()` checks.
-
+- I built every endpoint except the one that lists all tasks. The AI included `GET /tasks` without being asked.
+- The AI version is more concise: it uses inline `Session` blocks instead of a separate `SqlOperator` class, making it shorter and arguably easier to follow for a toy project.
+- The AI version sets a default value on `done` (`done: bool = False`), so a `Task` can be created without explicitly passing it. My model has `done: bool` with no default, meaning it must always be provided.
 I understand the AI version well enough to explain every line, but the gap is real: it took me several focused sessions to reach the state I have, and the AI produced something objectively more complete in one shot.
 
 ### What did the AI get wrong or quietly ignore?
 
 - **No `400` on empty request body for `PUT`.** My version explicitly checks whether the client sent an empty body (`title` and `done` are both `None`) and returns a `400 Bad Request`. The AI version silently accepts it and returns the task unchanged.
-- `Optional[str]` with `min_length` doesn't reject an empty string in the same way. If a client sends `"   "`, my version catches it; the AI version would pass it through (min_length counts whitespace characters).
+- **No dependency injection.** The AI version opens a new `Session` block inside every endpoint. My version uses FastAPI's `Depends(get_session)` pattern, which makes testing easier.
+- **No input validation on `PUT` title.** The AI checks `if task_in.title is not None` but doesn't `.strip()` and re-validate the title. My version catches whitespace-only titles like `"   "` and rejects them with a `400`.
+- **Typo in my code.** Line 149 of my `main.py` has `status_status_code` instead of `status_code` — a bug the AI version doesn't have.
 
 ### What did my prompt forget to specify — and what did the AI silently decide for you?
 
 I never told the AI:
 
 - **Which endpoints to include.** I described the CRUD operations but didn't explicitly say "include a `GET /tasks` to list all tasks." The AI decided to add it.
-- I didn't say "use `HTTPException`" or "use the `Response` object.".
-- I never specified min/max title length. The AI invented `min_length=3, max_length=100`.
-- I didn't specify `{"error": "..."}` vs `{"detail": "..."}`. The AI went with FastAPI's convention.
+- I didn't say "use inline sessions" or "use dependency injection." The AI chose inline sessions.
+- I didn't specify `{"error": "..."}` vs `{"detail": "..."}`. The AI went with the same `{"error": ...}` pattern I used.
 
-Conclusion: the AI is a better FastAPI practitioner than I am right now, but it also makes a dozen silent decisions that a human reviewer needs to catch.
+Conclusion: the AI is a better FastAPI practitioner than I am right now, but it also makes a dozen silent decisions that a human reviewer needs to catch. My version has better architecture (dependency injection, reusable operator class) while the AI's is cleaner and more complete.
