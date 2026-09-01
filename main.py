@@ -1,8 +1,12 @@
+import os
+from dotenv import load_dotenv
 from fastapi import FastAPI, Response, status, Depends
 from pydantic import BaseModel
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 from contextlib import asynccontextmanager
 from typing import Optional
+
+load_dotenv()
 
 class Tasks(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -10,8 +14,11 @@ class Tasks(SQLModel, table=True):
     done: bool
 
 
-sqlite_url = "sqlite:///tasks.db"
-engine = create_engine(sqlite_url, connect_args={"check_same_thread": False})
+postgres_url = (
+    f"postgresql://postgres:{os.getenv('DATABASE_PASSWORD', 'dev')}"
+    f"@localhost:5432/tasks"
+)
+engine = create_engine(postgres_url)
 
 def get_session():
     with Session(engine) as session:

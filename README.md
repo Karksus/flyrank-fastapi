@@ -2,12 +2,13 @@
 
 ##  Task API with FastAPI & SQLModel
 
-A simple, lightweight CRUD API built with FastAPI and SQLModel, backed by a persistent SQLite database.
+A simple, lightweight CRUD API built with FastAPI and SQLModel, backed by PostgreSQL.
 
 ## Database Design & Persistence
 
-* **Why SQLite was chosen:** SQLite was chosen because it is lightweight, requires **zero setup** or external server configuration, stores everything in a **single file**, and **survives restarts** to preserve your data between sessions.
-* **Where the database file lives:** The database file is named **`tasks.db`** and is created automatically in your project root upon startup. It is typically included in `.gitignore` so that each new clone of the repository starts with a fresh database.
+* **Why PostgreSQL was chosen:** PostgreSQL is a production-grade relational database with robust concurrency, ACID compliance, and rich data types.
+* **How to run it:** A Docker container provides the database with zero host-side installation. Data persists in a named Docker volume across restarts.
+* **Configuration:** The database password is read from a `.env` file (variable `DATABASE_PASSWORD`). Create a `.env` in the project root with `DATABASE_PASSWORD=dev` before running. It is already gitignored.
 
 ### How to run it
 
@@ -17,14 +18,56 @@ A simple, lightweight CRUD API built with FastAPI and SQLModel, backed by a pers
 git clone https://github.com/Karksus/flyrank-fastapi.git
 cd flyrank-fastapi
 ```
-2 - Start a `uv` project and install `FASTAPI`:
+2 - Start a `uv` project and install dependencies:
 ```bash
 uv init .
-uv add "fastapi[standard]"
+uv add "fastapi[standard]" psycopg2-binary python-dotenv
 ```
-3 - Start `FASTAPI` app (dev)
+3 - Create a `.env` file with your database password:
+```bash
+echo "DATABASE_PASSWORD=dev" > .env
+```
+4 - Start a PostgreSQL container:
+```bash
+docker run \
+    --name taskdb \
+    -e POSTGRES_PASSWORD=dev \
+    -e POSTGRES_DB=tasks \
+    -p 5432:5432 \
+    -v taskdata:/var/lib/postgresql/data \
+    -d postgres
+```
+5 - Start `FASTAPI` app (dev)
 ```bash
 uv run fastapi dev
+```
+
+### Docker & PostgreSQL Usage
+
+```bash
+docker run \
+    --name taskdb \
+    -e POSTGRES_PASSWORD=dev \
+    -e POSTGRES_DB=tasks \
+    -p 5432:5432 \
+    -v taskdata:/var/lib/postgresql/data \
+    -d postgres
+```
+
+```bash
+docker ps -a
+```
+
+```bash
+docker image ls
+```
+
+```bash
+docker logs taskdb
+```
+
+```bash
+docker exec -it taskdb psql -U postgres -d tasks
 ```
 
 The project holds a full CRUD example, with `GET`, `POST`, `PUT` and `DELETE` HTTP methods.
@@ -88,14 +131,6 @@ curl -i -X DELETE "http://127.0.0.1:8000/tasks/2"
 <img width="316" height="146" alt="image" src="https://github.com/user-attachments/assets/5b12f716-d0ca-4c72-a545-e7401381bf95" />
 
 ---
-## DB-Browser example
-
-### Database
-<img width="377" height="209" alt="image" src="https://github.com/user-attachments/assets/f2827846-e8a3-4442-964e-12b2a6c41cdd" />
-
-### Query
-<img width="367" height="376" alt="image" src="https://github.com/user-attachments/assets/d507c973-d993-4583-8968-550ab71cbb68" />
-
 ## AI vs Me
 
 I built `main.py` step by step, endpoint by endpoint. Then I asked an AI to generate its own version from a single detailed prompt describing the same API.
