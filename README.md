@@ -70,6 +70,26 @@ docker logs taskdb
 docker exec -it taskdb psql -U postgres -d tasks
 ```
 
+### How to run with Docker Compose
+
+Everything (API + Postgres) runs with a single command — no manual Postgres container needed:
+
+```bash
+docker compose up --build
+```
+
+- API exposed at `http://localhost:3000` (docs at `http://localhost:3000/docs`)
+- Postgres runs as the `db` service, reachable from `api` by the service name `db`.
+- DB data is persisted in the named volume `taskdata`
+
+
+Tips worth knowing:
+
+- **Healthcheck is not optional:** `depends_on` alone only waits for the db container to start, not for Postgres to accept connections. Without the `pg_isready` healthcheck + `condition: service_healthy`, the API can die at startup with `Connection refused`. See `compose.yaml`.
+- **Secrets live in `.env`, never in `compose.yaml`:** replace credentials with `${VAR:-default}` placeholders (see `compose.yaml`) and add the real values to a gitignored `.env`. Copy `.env.example` and fill it in.
+- **Stop cleanly** with `docker compose down` (add `-v` to also delete the `taskdata` volume).
+- **Rebuild after code changes:** `docker compose up --build` re-builds the image; `compose up -d` alone won't pick up `main.py` edits.
+
 The project holds a full CRUD example, with `GET`, `POST`, `PUT` and `DELETE` HTTP methods.
 
 |Method|Endpoint        |Description                                              |
