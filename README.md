@@ -95,6 +95,7 @@ curl -i http://127.0.0.1:8000/health
 <img width="320" height="236" alt="image" src="https://github.com/user-attachments/assets/a4197e50-94f5-436d-b9a2-f1acc4bb6807" />
 
 ### GET /tasks/{task_id} - Gets task id
+> SQLModel/SQLAlchemy parameterizes queries behind the scenes (e.g. `WHERE id = %s`), so the id is passed as a bound parameter rather than glued into the SQL string — preventing SQL injection such as `SELECT * FROM tasks WHERE id = $1`/`WHERE id = %s`.
 ```bash
 curl -i http://127.0.0.1:8000/tasks/1
 ```
