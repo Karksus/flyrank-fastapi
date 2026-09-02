@@ -1,6 +1,6 @@
 [project]
 name = "flyrank-fastapi"
-version = "0.2.0"
+version = "0.3.0"
 description = "FlyRank CRUD API Module"
 readme = "README.md"
 requires-python = ">=3.12"

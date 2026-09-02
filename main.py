@@ -14,11 +14,7 @@ class Tasks(SQLModel, table=True):
     done: bool
 
 
-postgres_url = (
-    f"postgresql://postgres:{os.getenv('DATABASE_PASSWORD', 'dev')}"
-    f"@localhost:5432/tasks"
-)
-engine = create_engine(postgres_url)
+engine = create_engine(os.getenv('DATABASE_URL'))
 
 def get_session():
     with Session(engine) as session:
@@ -55,7 +51,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="FastAPI Task Manager Toy API",
     description="A fully-featured toy CRUD application managing FastAPI learning tasks with input validation and error handling.",
-    version="0.2.0",
+    version="0.3.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan
