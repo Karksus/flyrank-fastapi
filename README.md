@@ -130,8 +130,45 @@ curl -i -X DELETE "http://127.0.0.1:8000/tasks/2"
 <img width="315" height="202" alt="image" src="https://github.com/user-attachments/assets/2c63e1dd-ef5f-4b74-95d0-21cb262182fd" />
 
 <img width="316" height="146" alt="image" src="https://github.com/user-attachments/assets/5b12f716-d0ca-4c72-a545-e7401381bf95" />
+---
+
+## Testing & Checkpoint Results
+
+All endpoints tested against a real Postgres container (`taskdb`). Queries are parameterized — FastAPI/SQLModel sends the id as a bound parameter (`WHERE id = $1`/`%s`) instead of gluing it into the SQL string.
+
+### Endpoint behavior
+
+| Endpoint            | SQL                                       | Valid result | Error result |
+|---------------------|-------------------------------------------|--------------|--------------|
+| `POST /tasks`       | `INSERT INTO tasks (title, done) VALUES ($1, $2) RETURNING *` | `201` (+ new row with id) | `400` on missing/empty title |
+| `GET /tasks`        | `SELECT * FROM tasks`                     | `200` (list) | — |
+| `GET /tasks/{id}`   | `SELECT * FROM tasks WHERE id = $1`       | `200`        | `404` on unknown id |
+| `PUT /tasks/{id}`   | `UPDATE tasks SET title = $1, done = $2 WHERE id = $3` | `200` | `404` on unknown id |
+| `DELETE /tasks/{id}`| `DELETE FROM tasks WHERE id = $1`         | `204` (empty body) | `404` on unknown id |
+
+### Checkpoint: create → mark done → delete, confirmed with GET /tasks
+
+| Step | Request                                  | Expected | Actual | Notes |
+|------|------------------------------------------|----------|--------|-------|
+| 1    | `POST /tasks` `{"title": "Checkpoint final test"}` | `201` | `201` | row created with `id: 6`, `done: false` |
+| 2    | `GET /tasks`                             | `200` | `200` | new row confirmed present |
+| 3    | `PUT /tasks/6` `{"done": true}`          | `200` | `200` | returned `{"done": true, ...}` |
+| 4    | `GET /tasks/6`                           | `200` | `200` | `done: true` persisted |
+| 5    | `DELETE /tasks/6`                        | `204` | `204` | empty body (0 bytes) |
+| 6    | `GET /tasks/6` (after delete)            | `404` | `404` | `{"error":"Task 6 not found"}` |
+
+### Validation & edge cases
+
+| Request                                  | Expected | Actual |
+|------------------------------------------|----------|--------|
+| `POST /tasks` `{"title": "   "}` (empty) | `400` | `400` |
+| `POST /tasks` `{}` (missing title)       | `400` | `400` |
+| `GET /tasks/9999` (unknown id)           | `404` | `404` |
+| `PUT /tasks/9999` `{"done": true}`       | `404` | `404` |
+| `DELETE /tasks/9999`                     | `404` | `404` |
 
 ---
+
 ## AI vs Me
 
 I built `main.py` step by step, endpoint by endpoint. Then I asked an AI to generate its own version from a single detailed prompt describing the same API.

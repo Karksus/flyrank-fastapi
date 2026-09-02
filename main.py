@@ -95,6 +95,12 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/tasks")
+def list_tasks(session: Session = Depends(get_session)):
+    statement = select(Tasks)
+    return session.exec(statement).all()
+
+
 @app.get("/tasks/{task_id}")
 def get_task_id(task_id: int, response: Response, session: Session = Depends(get_session)):
     db = SqlOperator(session)
@@ -149,4 +155,4 @@ def delete_task(task_id: int, response: Response, session: Session = Depends(get
         return {"error": f"Task {task_id} not found"}
     
     db.delete(task)
-    return Response(status_status_code=status.HTTP_204_NO_CONTENT)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
